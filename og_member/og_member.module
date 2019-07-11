@@ -1,0 +1,222 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function og_member_menu() {
+  $items = array();
+
+  $items['group/%/%/admin/people/create-user'] = array(
+    'title callback' => 'og_ui_menu_title_callback',
+    'title arguments' => array('Add new user to group @group', 1, 2),
+    'description' => 'Add a new user to space.',
+    'page callback' => 'og_member_user_register_form',
+    'page arguments' => array(1, 2),
+    'access callback' => 'og_member_ui_access',
+    'access arguments' => array('create new members', 1, 2),
+    'weight' => -8,
+  );
+  
+  $items['group/%/%/admin/people/edit-profile/%'] = array(
+    'title callback' => 'og_member_menu_title_callback',
+    'title arguments' => array('Edit user @user', 6),
+    'description' => 'Edit member user profile.',
+    'page callback' => 'og_member_user_profile_form',
+    'page arguments' => array(1, 2, 6),
+    'access callback' => 'og_member_ui_access',
+    'access arguments' => array('edit member profile', 1, 2),
+    'weight' => -8,
+  );
+
+  return $items;
+}
+
+/**
+ * OG Add user register form.
+ */
+function og_member_user_register_form($entity_type, $entity_id) {
+  // Ensure the user has admin users permission to continue
+  _og_member_temp_administer_users();
+  
+  return drupal_get_form('user_register_form', 'og', $entity_type . '_' . $entity_id);
+}
+
+/**
+ * Implement hook_form_FORM_ID_alter() for variable_realm_edit_variables_form.
+ */
+function og_member_form_user_register_form_alter(&$form, $form_state, $form_id) {
+  if (isset($form_state['build_info']['args'][0]) && $form_state['build_info']['args'][0] === 'og' && $form['administer_users']['#value']) {
+    // Only give roles access to site admins
+    //$form['account']['roles']['#access'] = user_access('manage users');
+    $form['account']['roles']['#access'] = FALSE;
+    
+    // Hide the group selection form, we'll force the value in submit handler
+    $form['og_user_node']['#access'] = FALSE;
+    
+    // Call our submit handler second
+    $form['#submit'][] = 'og_member_user_register_submit';
+  }
+}
+
+function og_member_user_register_submit($form, &$form_state) {
+  $account = user_load($form_state['values']['uid']);
+  
+  // Account created. Otherwise do nothing.
+  if ($account) {
+    $values = array(
+      'entity_type' => 'user',
+      'entity' => $account,
+      'state' => OG_STATE_ACTIVE,
+    );
+    
+    list($group_type, $gid) = explode('_', $form_state['build_info']['args'][1]);
+
+    og_group($group_type, $gid, $values);
+  }
+  
+  return $form;
+}
+
+/**
+ * OG user profile form
+ */
+function og_member_user_profile_form($entity_type, $entity_id, $uid) {
+  $account = user_load($uid);
+  if (!$account) {
+    return drupal_not_found();
+  }
+  
+  // Verify uid is in the group before granting access
+  if (!og_is_member($entity_type, $entity_id, 'user', $account, [OG_STATE_ACTIVE, OG_STATE_PENDING])) {
+    return drupal_access_denied();
+  }
+  
+  // Ensure the user has admin users permission to continue
+  _og_member_temp_administer_users();
+  
+  // Load user pages file from user module
+  module_load_include('inc', 'user', 'user.pages');
+  $form = drupal_get_form('user_profile_form', user_load($uid), 'account', 'og', $entity_type . '_' . $entity_id);
+  
+  // Put the title back
+  drupal_set_title(og_member_menu_title_callback('Edit user @user', $uid));
+  
+  return $form;
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function og_member_form_user_profile_form_alter(&$form, &$form_state, $form_id) {
+  // Disallow account cancellation from og
+  if (isset($form_state['build_info']['args'][2]) && $form_state['build_info']['args'][2] === 'og') {
+    $form['actions']['cancel']['#access'] = FALSE;
+  }
+}
+
+/**
+ * Implement hook_og_permission().
+ */
+function og_member_og_permission() {
+  $items = array();
+
+  $items['create new members'] = array(
+    'title' => t('Create New Members'),
+    'description' => t('Create new Drupal users and add them to group.'),
+    'default role' => array(OG_ADMINISTRATOR_ROLE),
+    'restrict access' => TRUE,
+  );
+  
+  $items['edit member profile'] = array(
+    'title' => t('Edit Profiles of Members'),
+    'description' => t('Edit user profiles of members.'),
+    'default role' => array(OG_ADMINISTRATOR_ROLE),
+    'restrict access' => TRUE,
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_og_ui_get_group_admin()
+ */
+function og_member_og_ui_get_group_admin($group_type, $gid) {
+  $items = array();
+
+  if (og_member_ui_access('create new members', $group_type, $gid)) {
+    $items['create_new_members'] = array(
+      'title' => t('Create New User'),
+      'description' => t('Create new user'),
+      'href' => 'admin/people/create-user',
+    );
+  }
+
+  return $items;
+}
+
+function og_member_menu_title_callback($title, $uid) {
+  $user = user_load($uid);
+  return str_replace('@user', $user->name, $title);
+}
+
+function og_member_ui_access($permission, $group_type, $gid) {
+  return user_access('administer users') ||
+      og_user_access($group_type, $gid, $permission);
+}
+
+/**
+ * Temporarily override 'administer users' for the duration or processing this page.
+ */
+function _og_member_temp_administer_users() {
+  global $user;
+  $static = &drupal_static('user_access');
+  $static[$user->uid]['administer users'] = TRUE;
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function og_member_form_variable_edit_form_alter(&$form, &$form_state, $form_id) {
+   
+  if (isset($form['user_mail_register_admin_created_[mail_part]'])) {
+    $form['user_mail_register_admin_created_[mail_part]']['user_mail_register_admin_created_body']['#type'] = 'text_format';
+  }
+  if (isset($form['user_mail_register_no_approval_required_[mail_part]'])) {
+    $form['user_mail_register_no_approval_required_[mail_part]']['user_mail_register_no_approval_required_body']['#type'] = 'text_format';
+  }
+  if (isset($form['user_mail_register_pending_approval_[mail_part]'])) {
+    $form['user_mail_register_pending_approval_[mail_part]']['user_mail_register_pending_approval_body']['#type'] = 'text_format';
+  }
+  if (isset($form['user_mail_password_reset_[mail_part]'])) {
+    $form['user_mail_password_reset_[mail_part]']['user_mail_password_reset_body']['#type'] = 'text_format';
+  }
+  if (isset($form['user_mail_status_activated_[mail_part]'])) {
+    $form['user_mail_status_activated_[mail_part]']['user_mail_status_activated_body']['#type'] = 'text_format';
+  }
+  if (isset($form['user_mail_status_blocked_[mail_part]'])) {
+    $form['user_mail_status_blocked_[mail_part]']['user_mail_status_blocked_body']['#type'] = 'text_format';
+  }
+  if (isset($form['user_mail_cancel_confirm_[mail_part]'])) {
+    $form['user_mail_cancel_confirm_[mail_part]']['user_mail_cancel_confirm_body']['#type'] = 'text_format';
+  }
+  if (isset($form['user_mail_status_canceled_[mail_part]'])) {
+    $form['user_mail_status_canceled_[mail_part]']['user_mail_status_canceled_body']['#type'] = 'text_format';
+  }
+}
+
+/**
+ * Implements hook_variable_update().
+ */
+function og_member_variable_update($name, $value, $old_value, $options) {
+  $variable_array = array('user_mail_register_admin_created_body','user_mail_register_no_approval_required_body','user_mail_register_pending_approval_body','user_mail_password_reset_body','user_mail_status_activated_body','user_mail_status_blocked_body','user_mail_cancel_confirm_body','user_mail_status_canceled_body');
+
+  if(in_array($name, $variable_array)){
+    if (is_array($value)) {
+      $value = $value['value'];
+      variable_set($name, $value);
+    } else {
+      variable_set($name, $value);
+    }
+  }
+}
+
