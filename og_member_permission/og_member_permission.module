@@ -1,0 +1,195 @@
+<?php
+/*
+const OG_ADMINISTRATOR_ROLE = 'administrator member';
+const OMNI_FORM_TYPE_PROPOSAL = 'proposal';
+const OMNI_OG_OPERATIONS_ROLE = 'operations';
+const OMNI_OG_APP_SUPPORT_ROLE = 'app support';
+const OMNI_OG_USER_SUPPORT_ROLE = 'user support';
+*/
+
+// og add admin access callback
+function _og_add_admin_access(){
+
+	global $user;
+	$uid = $user->uid;
+	$user_roles = $user->roles;
+	$space = _get_group_space_node_data();
+	$space_nid = $space->nid;
+	$is_admin = FALSE;
+	$og_roles = og_get_user_roles('node', $space_nid, $uid);
+	if (in_array("administrator", $user_roles)) {
+		$is_admin =TRUE;
+	} else {
+		if (in_array(OG_ADMINISTRATOR_ROLE, $og_roles)) {
+		    $is_admin = TRUE;
+		}
+	}
+	if ($is_admin) {
+		return true;
+	}
+	else{
+		drupal_set_message("You are not authorised to access this page","warning");
+		return false;
+	}
+}
+
+/**
+ * Implement form alter for omni custom form
+ * 	4 => non-member [locked]
+ * 	5 => member [locked]
+ * 	6 => administrator member
+ * 	7 => app support
+ * 	8 => operations
+ * 	9 => user support
+ * 	
+ */
+// alter the form og_ui_add_users  
+function og_member_permission_form_og_ui_add_users_alter(&$form, &$form_state, $form_id){
+	// drupal_set_message("Form alter for add new user");
+	
+	global $user;
+	$uid = $user->uid;
+	$user_roles = $user->roles;
+	$space = _get_group_space_node_data();
+	$space_nid = $space->nid;
+	$is_not_admin = FALSE;
+	$og_roles = og_get_user_roles('node', $space_nid, $uid);
+	
+	if (!in_array("administrator", $user_roles) && !in_array(OG_ADMINISTRATOR_ROLE, $og_roles)) {
+		
+		if (!in_array(OMNI_OG_OPERATIONS_ROLE, $og_roles)) {
+		    $is_not_admin = TRUE;
+		}
+		if (!in_array(OMNI_OG_APP_SUPPORT_ROLE, $og_roles)) {
+		    $is_not_admin = TRUE;
+		}
+	}
+	
+	if ($is_not_admin) {
+		// unset($form['og_user']['roles']['#options'][6]);
+		// unset($form['og_user']['roles']['#options'][7]);
+		// unset($form['og_user']['roles']['#options'][8]);
+		
+		$not_auth = "<span class='small warning'>&nbsp;&nbsp;[&nbsp;You are not authorised to Select this role !&nbsp;]&nbsp;&nbsp;</span>";
+		$form['og_user']['roles']['#options'][6] = $form['og_user']['roles']['#options'][6].$not_auth;
+		$form['og_user']['roles']['#options'][7] = $form['og_user']['roles']['#options'][7].$not_auth;
+		$form['og_user']['roles']['#options'][8] = $form['og_user']['roles']['#options'][8].$not_auth;
+		$form['og_user']['roles']['#attributes'] = array('onclick'=>'if(this.value!=9){return false;}');
+	}
+}
+
+/**
+ * Implement form alter for omni custom form
+ * 	4 => non-member [locked]
+ * 	5 => member [locked]
+ * 	6 => administrator member
+ * 	7 => app support
+ * 	8 => operations
+ * 	9 => user support
+ * 	
+ */
+// alter the form og_ui_edit_membership  
+function og_member_permission_form_og_ui_edit_membership_alter(&$form, &$form_state, $form_id){
+	// drupal_set_message("Form alter for edit membership");
+
+	global $user;
+	$uid = $user->uid;
+	$user_roles = $user->roles;
+	$space = _get_group_space_node_data();
+	$space_nid = $space->nid;
+	$is_not_admin = FALSE;
+	$og_roles = og_get_user_roles('node', $space_nid, $uid);
+	
+	if (!in_array("administrator", $user_roles) && !in_array(OG_ADMINISTRATOR_ROLE, $og_roles)) {
+		
+		if (!in_array(OMNI_OG_OPERATIONS_ROLE, $og_roles)) {
+		    $is_not_admin = TRUE;
+		}
+		if (!in_array(OMNI_OG_APP_SUPPORT_ROLE, $og_roles)) {
+		    $is_not_admin = TRUE;
+		}
+	}
+	
+	if ($is_not_admin) {
+		$not_auth = "<span class='small warning'>&nbsp;&nbsp;[&nbsp;You are not authorised to edit this role !&nbsp;]&nbsp;&nbsp;</span>";
+		// unset($form['og_user']['roles']['#options'][6]);
+		// unset($form['og_user']['roles']['#options'][7]);
+		// unset($form['og_user']['roles']['#options'][8]);		
+		// $form['og_user']['roles']['#attributes'] = array('disabled'=>'true');
+		$form['og_user']['roles']['#options'][6] = $form['og_user']['roles']['#options'][6].$not_auth;
+		$form['og_user']['roles']['#options'][7] = $form['og_user']['roles']['#options'][7].$not_auth;
+		$form['og_user']['roles']['#options'][8] = $form['og_user']['roles']['#options'][8].$not_auth;
+		$form['og_user']['roles']['#attributes'] = array('onclick'=>'if(this.value!=9){return false;}');
+	}
+}
+
+
+/**
+ * Implement Hook Menu Alter
+ */
+
+function og_member_permission_menu_alter(&$items){
+	$items['group/%/%/add-admin/%']['access callback'] = '_og_add_admin_access';
+	$items['group/%/%/remove-admin/%']['access callback'] = '_og_add_admin_access';
+
+	/* Restrict for Drupal user Profile */
+	// $items['group/%/%/admin/people/create-user']['access callback'] = '_og_add_admin_access';
+	// $items['group/%/%/admin/people/edit-profile/%']['access callback'] = '_og_add_admin_access';
+	
+	/* Restrict for OG profile & membership */
+	// $items['group/%/%/admin/people/edit-membership/%']['access callback'] = '_og_add_admin_access';
+	$items['group/%/%/admin/people/delete-membership/%']['access callback'] = '_og_add_admin_access';
+
+	/*Change callback fucntion*/
+	$items['group/%/%/admin/people']['page callback'] = '_og_ui_admin_user_support';
+}
+
+/**
+ * Fetch URl basis node/space data
+ */
+function _get_group_space_node_data(){
+	$args = arg();	
+	if ($args[0] == 'group' && $args[1] == 'node' && is_numeric($args[2])) {		  
+	  $space_nid = $args[2];		  
+	  $space = node_load($space_nid);
+	  return $space;
+	} else {
+		return false;
+	}
+
+}
+
+/**
+ * Custom View for user support roles
+ */
+function _og_ui_admin_user_support($group_type, $gid) {
+	global $user;
+	$uid = $user->uid;
+	$user_roles = $user->roles;
+	$space = _get_group_space_node_data();	
+	$space_nid = $space->nid;
+	$is_not_admin = FALSE;
+	$og_roles = og_get_user_roles('node', $space_nid, $uid);
+	if (!in_array("administrator", $user_roles) && !in_array(OG_ADMINISTRATOR_ROLE, $og_roles)) {
+		
+		if (!in_array(OMNI_OG_OPERATIONS_ROLE, $og_roles)) {
+		    $is_not_admin = TRUE;
+		}
+		if (!in_array(OMNI_OG_APP_SUPPORT_ROLE, $og_roles)) {
+		    $is_not_admin = TRUE;
+		}
+	}
+
+  og_set_breadcrumb($group_type, $gid, array(l(t('Group'), "$group_type/$gid/group")));
+  
+  if($is_not_admin){
+  	list($view_name, $display) = explode(':', 'og_members_user_support:default');
+  } else {
+  	list($view_name, $display) = explode(':', variable_get('og_ui_admin_people_view', 'og_members_admin:default'));
+  }
+  
+  $view = views_get_view($view_name, $display);
+  $view->set_arguments(array($group_type, $gid));
+  $view->override_url = $_GET['q'];
+  return $view->preview();
+}

@@ -1,0 +1,9 @@
+name = OG Members
+description = Enhanced member functions
+package = Organic Groups
+core = 7.x
+php = 5.1
+
+dependencies[] = og_ui
+dependencies[] = og_context
+dependencies[] = entity
