@@ -1,0 +1,158 @@
+<?php
+
+/**
+ * Implements hook_schema().
+ */
+function sao_data_schema() {
+  /*
+   *$schema['node'] = array(
+   *  // example (partial) specification for table "node"
+   *  'description' => 'The base table for nodes.',
+   *  'fields' => array(
+   *    'nid' => array(
+   *      'description' => 'The primary identifier for a node.',
+   *      'type' => 'serial',
+   *      'unsigned' => TRUE,
+   *      'not null' => TRUE),
+   *    'vid' => array(
+   *      'description' => 'The current {node_revision}.vid version identifier.',
+   *      'type' => 'int',
+   *      'unsigned' => TRUE,
+   *      'not null' => TRUE,
+   *      'default' => 0),
+   *    'type' => array(
+   *      'description' => 'The {node_type} of this node.',
+   *      'type' => 'varchar',
+   *      'length' => 32,
+   *      'not null' => TRUE,
+   *      'default' => ''),
+   *    'title' => array(
+   *      'description' => 'The title of this node, always treated as non-markup plain text.',
+   *      'type' => 'varchar',
+   *      'length' => 255,
+   *      'not null' => TRUE,
+   *      'default' => ''),
+   *    ),
+   *  'indexes' => array(
+   *    'node_changed'        => array('changed'),
+   *    'node_created'        => array('created'),
+   *    ),
+   *  'unique keys' => array(
+   *    'nid_vid' => array('nid', 'vid'),
+   *    'vid'     => array('vid')
+   *    ),
+   *  'foreign keys' => array(
+   *    'node_revision' => array(
+   *      'table' => 'node_revision',
+   *      'columns' => array('vid' => 'vid'),
+   *      ),
+   *    'node_author' => array(
+   *      'table' => 'users',
+   *      'columns' => array('uid' => 'uid')
+   *      ),
+   *     ),
+   *  'primary key' => array('nid'),
+   *);
+   */
+	$schema['csv_import_sao_data_archive_details'] = array(
+	    'description' => '',
+	    'fields' => array(
+	    	'id' => array(
+				'type' => 'serial',
+				'not null' => TRUE,
+			),
+			'DUNS' => array(
+				'type' => 'varchar',
+				'length' => 255,
+			),
+			'COMPANY_NAME' => array(
+		        'type' => 'varchar',
+		        'length' => 255,
+			),
+			'TRADE_NAME' => array(
+		        'type' => 'varchar',
+		        'length' => 255,
+			),
+			'LINE_OF_BUSINESS' => array(
+		        'type' => 'varchar',
+		        'length' => 255,
+			),
+			'NAICSPRIM' => array(
+		        'type' => 'varchar',
+		        'length' => 255,
+			),
+			'NAICSDESC' => array(
+		        'type' => 'varchar',
+		        'length' => 255,
+			),
+			'TRANSACTION_CODE' => array(
+		        'type' => 'varchar',
+		        'length' => 255,
+		    ),
+			'Date_Uploaded' => array(
+				'mysql_type' => 'datetime',
+				'not null' => TRUE,
+				'default' => format_date(time(), 'custom', 'Y-m-d 00:00:00'),
+				),
+				'updated' => array(
+					'mysql_type' => 'timestamp',
+					'not null' => TRUE,
+					/*'mysql_type' => 'datetime', */
+			),
+			'History_ID' => array(
+				'type' => 'int',
+				'not null' => TRUE,
+			),
+
+	  	),
+	    // 'foreign keys' => array(
+	    //   '' => array(
+	    //     'table' => '',
+	    //     'columns' => array('' => ''),
+	    //     ),
+	    //    ),
+	    'primary key' => array('id'),
+  	);
+  	$schema['csv_import_sao_list'] = array(
+	    'description' => '',
+	    'fields' => array(
+	    	'id' => array(
+				'type' => 'serial',
+				'not null' => TRUE,
+			),
+			'DUNS' => array(
+				'type' => 'varchar',
+				'length' => 255,
+			),
+			'COMPANY_NAME' => array(
+		        'type' => 'varchar',
+		        'length' => 255,
+			),
+			'TRADE_NAME' => array(
+		        'type' => 'varchar',
+		        'length' => 255,
+			),
+			'LINE_OF_BUSINESS' => array(
+		        'type' => 'varchar',
+		        'length' => 255,
+			),
+			'NAICSPRIM' => array(
+		        'type' => 'varchar',
+		        'length' => 255,
+			),
+			'TRANSACTION_CODE' => array(
+		        'type' => 'varchar',
+		        'length' => 255,
+		    ),
+
+	  	),
+	    // 'foreign keys' => array(
+	    //   '' => array(
+	    //     'table' => '',
+	    //     'columns' => array('' => ''),
+	    //     ),
+	    //    ),
+	    'primary key' => array('id'),
+  	);
+  	return $schema;
+}
