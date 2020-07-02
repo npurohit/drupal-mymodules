@@ -1,0 +1,6 @@
+name = Omni OG Member Permission
+description = Custom Functionality for the Omni Group User Management
+package = Custom Organic Group
+core = 7.x
+
+
