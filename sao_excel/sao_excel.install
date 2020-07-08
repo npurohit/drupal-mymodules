@@ -1,0 +1,140 @@
+<?php
+
+/**
+ * Implements hook_schema().
+ */
+function sao_excel_schema() {
+	$schema['csv_import_sao_data_archive_details'] = array(
+	    'description' => '',
+	    'fields' => array(
+	    	'id' => array(
+				'type' => 'serial',
+				'not null' => TRUE,
+			),
+			'History_ID' => array(
+				'type' => 'int',
+			),
+			'DUNS' => array(
+				'type' => 'varchar',
+				'length' => 255,
+			),
+			'COMPANY_NAME' => array(
+		        'type' => 'varchar',
+		        'length' => 255,
+			),
+			'TRADE_NAME' => array(
+		        'type' => 'varchar',
+		        'length' => 255,
+			),
+			'LINE_OF_BUSINESS' => array(
+		        'type' => 'varchar',
+		        'length' => 255,
+			),
+			'NAICSPRIM' => array(
+		        'type' => 'varchar',
+		        'length' => 255,
+			),
+			'NAICSDESC' => array(
+		        'type' => 'varchar',
+		        'length' => 255,
+			),
+			'TRANSACTION_CODE' => array(
+		        'type' => 'varchar',
+		        'length' => 255,
+		    ),
+			'Date_Uploaded' => array(
+				'type' => 'datetime',
+				'mysql_type' => 'datetime',
+			),
+
+	  	),
+	    // 'foreign keys' => array(
+	    //   '' => array(
+	    //     'table' => '',
+	    //     'columns' => array('' => ''),
+	    //     ),
+	    //    ),
+	    'primary key' => array('id'),
+  	);
+  	$schema['csv_import_sao_list'] = array(
+	    'description' => '',
+	    'fields' => array(
+	    	'id' => array(
+				'type' => 'serial',
+				'not null' => TRUE,
+			),
+			'DUNS' => array(
+				'type' => 'varchar',
+				'length' => 255,
+			),
+			'COMPANY_NAME' => array(
+		        'type' => 'varchar',
+		        'length' => 255,
+			),
+			'TRADE_NAME' => array(
+		        'type' => 'varchar',
+		        'length' => 255,
+			),
+			'LINE_OF_BUSINESS' => array(
+		        'type' => 'varchar',
+		        'length' => 255,
+			),
+			'NAICSPRIM' => array(
+		        'type' => 'varchar',
+		        'length' => 255,
+			),
+			'TRANSACTION_CODE' => array(
+		        'type' => 'varchar',
+		        'length' => 255,
+		    ),
+
+	  	),
+	    // 'foreign keys' => array(
+	    //   '' => array(
+	    //     'table' => '',
+	    //     'columns' => array('' => ''),
+	    //     ),
+	    //    ),
+	    'primary key' => array('id'),
+  	);
+
+  	$schema['csv_import_history_list'] = array(
+	    'description' => '',
+	    'fields' => array(
+	    	'id' => array(
+				'type' => 'serial',
+				'not null' => TRUE,
+			),
+			'DiskID' => array(
+				'type' => 'varchar',
+				'length' => 255,
+			),
+			'UploadResult' => array(
+		        'type' => 'varchar',
+		        'length' => 255,
+			),
+			'ResultMessage' => array(
+		        'type' => 'varchar',
+		        'length' => 255,
+			),
+			'NumberOfRows' => array(
+		        'type' => 'varchar',
+		        'length' => 255,
+			),
+			'UploadDate' => array(
+		        'mysql_type' => 'timestamp',
+				'not null' => TRUE,
+			),
+
+	  	),
+	    'primary key' => array('id'),
+  	);
+  	return $schema;
+}
+
+function sao_excel_update_7003() {
+  $schema = sao_excel_schema();
+  if (!db_table_exists('csv_import_history_list')) {
+    db_create_table('csv_import_history_list', $schema['csv_import_history_list']);
+  }
+}

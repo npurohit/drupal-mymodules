@@ -1,0 +1,4 @@
+name = Php Custom Excel
+description = "import excel"
+package = Custom
+core = 7.x

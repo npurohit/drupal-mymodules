@@ -1,0 +1,138 @@
+<?php
+
+
+/**
+ * Implements hook_menu().
+ */
+function sao_excel_menu() {
+  /*
+   *$items['blog'] = array(
+   *  'title' => 'blogs',
+   *  'page callback' => 'blog_page',
+   *  'access arguments' => array('access content'),
+   *  'type' => MENU_SUGGESTED_ITEM,
+   *);
+   */
+  $items['import_excel'] = array(
+    'title' => 'Import Excel',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('sao_excel_import_excel_form'),
+    'access arguments' => array(''),
+  );
+
+  return $items;
+}
+
+
+
+/**
+ * Implements hook_form().
+ */
+function sao_excel_import_excel_form($form, &$form_state) {
+	$options = [
+		'csv_import_sao_list' =>	'csv_import_sao_list',
+		'csv_import_sao_data_archive_details' =>	'csv_import_sao_data_archive_details',
+	];
+  	$form['import_form'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Import Form'),
+    );
+    $form['import_form']['file'] = array(
+      '#type' => 'file',
+      '#title' => t('Upload File'),
+      '#description' => t('Upload a file, allowed extensions: xls, xlsx'),
+    );
+    $form['import_form']['type'] = array(
+      '#type' => 'select',
+      '#options'  =>  $options,
+      '#title' => t('Select Table name'),
+    );
+
+    $form['import_form']['submit'] = array(
+      '#type' => 'submit',
+      '#value' => t('Submit'),
+    );
+
+  return $form;
+}
+
+
+function sao_excel_import_excel_form_validate($form, &$form_state) {
+	$file = file_save_upload('file', array(
+		'file_validate_extensions' => array('xls, xlsx'),
+	));
+	if ($file) {
+		if ($file = file_move($file, 'public://excel', FILE_EXISTS_REPLACE)) {
+			$form_state['excelfile'] = $file;
+		}
+		else {
+			form_set_error('file', t("Failed to write the uploaded file the site's file/smart-import folder."));
+		}
+	}
+	else {
+		form_set_error('file', t('File is required.'));
+	}
+}
+
+function sao_excel_import_excel_form_submit($form, &$form_state) {
+	if (isset($form_state['excelfile'])) {
+		module_load_include('inc', 'phpexcel', 'phpexcel');
+		$success_history = array('Accept' => 0, 'Reject' => 0);
+
+		// The path to the excel file.
+		$path = drupal_realpath($form_state['excelfile']->uri);
+		$data = phpexcel_import($path);
+	}
+
+
+	$batch = array(
+		'title' => t('Importing excel ...'),
+		'operations' => array(),
+		'init_message' => t('Commencing'),
+		'progress_message' => t('Processed @current out of @total.'),
+		'error_message' => t('An error occurred during processing'),
+		'finished' => 'excelImporter_import_finished',
+	);
+	$batch['operations'][] = array('_excelImporter_remember_filename', array( $form_state['excelfile']->filename ) ) ;
+	foreach ($data[0] as $key => $value) {
+		/**
+		 * we use base64_encode to ensure we don't overload the batch
+		 * processor by stuffing complex objects into it
+		 */
+		$value['table'] = $form_state['values']['type'];
+		$batch['operations'][] = array('_excelImporter_import_line', array($value));        
+	}
+	batch_set($batch);
+}
+
+
+function excelImporter_import_finished($success, $results, $operations) {
+	if($success) {
+		$data = [
+			'DiskID'	=>	$results['uploaded_filename'] ?? '',
+			'UploadResult'	=>	'Success',
+			'ResultMessage'	=>	'Successfully added data from Access database '.$results['uploaded_filename'].'.',
+			'NumberOfRows'	=>	$results['rows_imported'],
+			'UploadDate'	=>	date('d/m/y h:i:s'),
+		];
+		drupal_write_record('csv_import_history_list', $data);
+	}
+
+	return t('The excel import has completed.');
+	
+}
+
+
+function _excelImporter_remember_filename($filename, &$context) {
+  $context['results']['uploaded_filename'] = $filename;
+}
+
+
+function _excelImporter_import_line($line, &$context) {
+    $context['results']['rows_imported']++;    
+	//Show the row count by default
+	$context['message'] = t('Importing row !c', array( '!c' => $context['results']['rows_imported'] ));
+	$table = $line['table'];
+	drupal_write_record($table, $line);
+	// perform action.
+  }
